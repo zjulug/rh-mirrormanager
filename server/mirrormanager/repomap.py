@@ -92,6 +92,14 @@ def repo_prefix(path, category, ver):
                     else:
                         # fedora-install-
                         prefix = u'fedora-install-%s' % version
+            else: # development/NN branch day
+                # fedora-
+                if isDebug:
+                    prefix = u'fedora-debug-%s' % version
+                elif isSource:
+                    prefix = u'fedora-source-%s' % version
+                else:
+                    prefix=u'fedora-%s' % version
         elif isUpdatesReleased:
             # updates-released-
             if isDebug:
