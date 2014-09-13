@@ -37,7 +37,10 @@ def repo_prefix(path, category, ver):
         isUpdatesReleased = u'updates' in path
     isEverything = u'Everything' in path
     isFedora = u'Fedora' in path
-    
+    isCloud = u'Cloud' in path
+    isServer = u'Server' in path
+    isWorkstation = u'Workstation' in path
+
 
     isEpel = (category.name == u'Fedora EPEL')
     isFedoraLinux = (category.name == u'Fedora Linux')
@@ -92,6 +95,30 @@ def repo_prefix(path, category, ver):
                     else:
                         # fedora-install-
                         prefix = u'fedora-install-%s' % version
+                elif isCloud:
+                    if isDebug or isSource:
+                        # ignore releases/$version/Cloud/$arch/debug/
+                        # ignore releases/$version/Cloud/source/SRPMS/
+                        prefix = None
+                    else:
+                        # fedora-cloud-
+                        prefix = u'fedora-cloud-%s' % version
+                elif isServer:
+                    if isDebug or isSource:
+                        # ignore releases/$version/Server/$arch/debug/
+                        # ignore releases/$version/Server/source/SRPMS/
+                        prefix = None
+                    else:
+                        # fedora-server-
+                        prefix = u'fedora-server-%s' % version
+                elif isWorkstation:
+                    if isDebug or isSource:
+                        # ignore releases/$version/Workstation/$arch/debug/
+                        # ignore releases/$version/Workstation/source/SRPMS/
+                        prefix = None
+                    else:
+                        # fedora-workstation-
+                        prefix = u'fedora-workstation-%s' % version
             else: # development/NN branch day
                 # fedora-
                 if isDebug:
