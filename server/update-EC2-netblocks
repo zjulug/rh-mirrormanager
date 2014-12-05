@@ -1,0 +1,109 @@
+#!/usr/bin/python
+__requires__ = 'TurboGears[future]'
+import pkg_resources
+pkg_resources.require("TurboGears")
+
+# std imports
+import optparse
+import sys
+import json
+import urlgrabber
+# TurboGears imports
+import turbogears
+from mirrormanager.model import Site, HostNetblock
+from turbogears.database import PackageHub
+hub = __connection__ = None
+options = None
+
+def parse_out_region(hostname):
+    hostname = hostname.lstrip('s3-mirror-')
+    hostname = hostname.rstrip('.fedoraproject.org')
+    return hostname
+
+def s3_mirrors():
+    hosts_by_region = {}
+    site = Site.byName("Red Hat")
+    for host in site.hosts:
+        if host.name.startswith("s3"):
+            region = parse_out_region(host.name)
+            hosts_by_region[region] = {'host': host,
+                                       'netblocks': {},
+                                   }
+            for nb in host.netblocks:
+                hosts_by_region[region]['netblocks'][nb.netblock] = {'host_netblock_id' : nb.id,
+                                                                     'stale':True,
+                }
+
+    return hosts_by_region
+
+
+def get_ip_ranges():
+    return urlgrabber.urlread('https://ip-ranges.amazonaws.com/ip-ranges.json')
+
+def parse_ip_ranges(ipranges_str):
+    return json.loads(ipranges_str)
+
+def host_has_netblock(hosts_by_region, host, netblock):
+    return netblock in hosts_by_region[host]['netblocks']
+
+def doit():
+    hosts_by_region = s3_mirrors()
+    ipranges_str = get_ip_ranges()
+    ipranges = parse_ip_ranges(ipranges_str)
+
+    for p in ipranges.prefixes:
+        service = p['service']
+        region = p['region']
+        ip_prefix = p['ip_prefix']
+        if service != "EC2":
+            continue
+
+        if region in hosts_by_region: # ignore regions we don't have a mirror in
+            host = hosts_by_region[region]
+            if not host_has_netblock(hosts_by_region, region, ip_prefix):
+                print "Added region %s netblock %s" % (region, ip_prefix)
+                if not options.dry_run:
+                    nb = HostNetblock(host=host, netblock=ip_prefix) # this adds the entry to the database, mark as not stale
+                hosts_by_region[region]['netblocks'][ip_prefix] = {'host_netblock_id' : nb.id,
+                                                                   'stale':False,
+                                                               }
+            else:
+                # found the netblock in our database, mark it as not stale
+                hosts_by_region[region]['netblocks'][ip_prefix]['stale'] = False
+                
+
+    # delete stale netblock entries from the database
+    for h in hosts_by_region:
+        for netblock in hosts_by_region[h]['netblocks']:
+            if hosts_by_region[h]['netblocks'][netblock]['stale']: # delete this, it's no longer on Amazon's list
+                print "Deleted region %s netblock %s" % (region, netblock)
+                nb = HostNetblock.get(hosts_by_region[h]['netblocks'][netblock]['host_netblock_id'])
+                if not options.dry_run:
+                    nb.destroySelf()
+
+
+def main():
+    global options
+    parser = optparse.OptionParser(usage=sys.argv[0] + " [options]")
+    parser.add_option("-c", "--config",
+                      dest="config", default='/etc/mirrormanager/prod.cfg',
+                      help="TurboGears config file to use (default=/etc/mirrormanager/prod.cfg)")
+    parser.add_option("-n", "--dry-run",
+                      dest="dry_run", action="store_true", default=False)
+
+
+    (options, args) = parser.parse_args()
+
+    turbogears.update_config(configfile=options.config,
+                             modulename="mirrormanager.config")
+    global hub
+    global __connection__
+    hub = PackageHub("mirrormanager")
+    __connection__ = hub
+    
+    doit()
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+        
