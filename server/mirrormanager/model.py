@@ -291,15 +291,22 @@ class Host(SQLObject):
                             dname = hc.category.topdir.name
 
                         # Don't create an entry for a directory the database doesn't know about
+                        # and if a crawler created it so we hit a unique violation, then we don't have to
                         try:
-                            dir = Directory.byName(dname)
-                            hcdir = HostCategoryDir(host_category=hc, path=d, directory=dir)
+                            directory = Directory.byName(dname)
+                            hcdir = HostCategoryDir(host_category=hc, path=d, directory=directory)
                             added += 1
                         except:
                             pass
-                for d in HostCategoryDir.selectBy(host_category=hc):
-                    if d.path not in config[c]['dirtree'].keys():
-                        d.destroySelf()
+                for hcdir in hc.dirs:
+                    # handle disappearing hcdirs, deleted by other processes
+                    try:
+                        hcdirpath = hcdir.path
+                    except: continue
+                    if hcdirpath not in config[c]['dirtree'].keys():
+                        try:
+                            hcdir.destroySelf()
+                        except: pass
                         deleted += 1
 
                 message += "Category %s directories updated: %s  added: %s  deleted %s\n" % (category.name, marked_up2date, added, deleted)

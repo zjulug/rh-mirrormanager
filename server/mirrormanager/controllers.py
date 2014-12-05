@@ -914,13 +914,13 @@ class Root(controllers.RootController):
             num_prefix = num_prefix_components(stripprefix)
         except KeyError:
             message=u'Missing categories, since, or stripprefix arguments'
-            return project_dict('rsync_acl', includes=[], excludes=excludes, message=message)
+            return project_dict('rsyncFilter', includes=[], excludes=excludes, message=message)
         
         try:
             since = int(since)
         except:
             message=u'value of argument since is not an integer'
-            return project_dict('rsync_acl', includes=[], excludes=excludes, message=message)
+            return project_dict('rsyncFilter', includes=[], excludes=excludes, message=message)
 
         includes = set()
         categories_requested = c.split(',')
@@ -935,7 +935,7 @@ class Root(controllers.RootController):
         # add trailing slash as rsync wants it
         for i in xrange(len(includes)):
             includes[i] += u'/'
-        return project_dict('rsync_acl', includes=includes, excludes=excludes, message=message)
+        return project_dict('rsyncFilter', includes=includes, excludes=excludes, message=message)
 
     def fedora_login(self, forward_url=None, previous_url=None, *args, **kw):
         login_dict = fc_login(forward_url, previous_url, args, kw)
