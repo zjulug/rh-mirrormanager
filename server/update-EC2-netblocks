@@ -66,7 +66,7 @@ def doit():
             if not host_has_netblock(hosts_by_region, region, ip_prefix):
                 print "Added host %s netblock %s" % (host.name, ip_prefix)
                 if not options.dry_run:
-                    nb = HostNetblock(host=host, netblock=ip_prefix) # this adds the entry to the database, mark as not stale
+                    nb = HostNetblock(host=host, netblock=ip_prefix, name=None) # this adds the entry to the database, mark as not stale
                     hosts_by_region[region]['netblocks'][ip_prefix] = {'host_netblock_id' : nb.id,
                                                                        'stale':False,
                                                                        }
